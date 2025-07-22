@@ -205,6 +205,17 @@ else:
 if best_model is not None:
     #Hiển thị thông tin mô hình
     st.write(best_model.summary())
+    col9, col0 = st.columns(2)
+    with col9:
+        st.markdown("### Thông tin mô hình GARCH")
+        st.write(f"Mô hình: {best_model.model.__class__.__name__}")
+        st.write(f"AIC: {best_model.aic:.2f}")
+        st.write(f"BIC: {best_model.bic:.2f}")
+        st.write(f"Log-Likelihood: {best_model.loglikelihood:.2f}")
+    with col0:
+        fig_garch = best_model.plot(annualize='D')
+        st.pyplot(fig_garch)
+
     #Chia làm 2 cột để hiển thị kết quả dự báo
     col5, col6 = st.columns(2)
     with col5:
