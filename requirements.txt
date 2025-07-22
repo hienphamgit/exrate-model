@@ -5,3 +5,4 @@ matplotlib
 arch
 plotly
 prophet
+yfinance
