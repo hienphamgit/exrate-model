@@ -68,19 +68,19 @@ st.markdown("### Mô tả thống kê dữ liệu")
 st.dataframe(df.describe().transpose(), use_container_width=True)
 
 # --- 2. Tính toán lợi suất Logarithmic ---
-st.markdown("## 2. Phân tích lợi suất Logarithmic")
+st.markdown("## 2. Phân tích lợi suất")
 df = bm.calculate_log_returns(df)
 col1, col2 = st.columns(2)
 # --- Biểu đồ 1: Lợi suất Logarithmic theo thời gian (Column 1) ---
 with col1:
-    st.subheader("Lợi suất Logarithmic của USD/VND theo thời gian")
+    st.subheader("Lợi suất logarit của USD/VND theo thời gian")
     fig1 = go.Figure()
     fig1.add_trace(
         go.Scatter(x=df['date'], y=df['log_return'], mode='lines', name='Lợi suất Log', line=dict(color='blue'))
     )
     fig1.update_layout(
         xaxis_title="",
-        yaxis_title="Lợi suất Logarithmic",
+        yaxis_title="Lợi suất",
         height=400,
         margin=dict(l=40, r=20, t=40, b=40), # Điều chỉnh lề
         xaxis=dict(showgrid=True, gridwidth=1, gridcolor='LightGrey'),
@@ -90,7 +90,7 @@ with col1:
 
 # --- Biểu đồ 2: Phân phối lợi suất Logarithmic (Column 2) ---
 with col2:
-    st.subheader("Phân phối lợi suất Logarithmic")
+    st.subheader("Phân phối lợi suất Logarit của USD/VND")
     fig2 = go.Figure()
 
     # Histogram Trace
