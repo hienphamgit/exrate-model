@@ -70,61 +70,65 @@ st.dataframe(df.describe().transpose(), use_container_width=True)
 # --- 2. Tính toán lợi suất Logarithmic ---
 st.markdown("## 2. Phân tích lợi suất Logarithmic")
 df = bm.calculate_log_returns(df)
-# --- 1. Tạo Subplots Figure ---
-# Tạo một figure với 1 dòng và 2 cột
-fig = make_subplots(rows=1, cols=2,
-                    subplot_titles=('Lợi suất Logarithmic của USD/VND theo thời gian', 'Phân phối lợi suất Logarithmic'),
-                    horizontal_spacing=0.15) # Điều chỉnh khoảng cách ngang giữa các biểu đồ
+col1, col2 = st.columns(2)
+# --- Biểu đồ 1: Lợi suất Logarithmic theo thời gian (Column 1) ---
+with col1:
+    st.subheader("Lợi suất Logarithmic của USD/VND theo thời gian")
+    fig1 = go.Figure()
+    fig1.add_trace(
+        go.Scatter(x=df['date'], y=df['log_return'], mode='lines', name='Lợi suất Log', line=dict(color='blue'))
+    )
+    fig1.update_layout(
+        xaxis_title="",
+        yaxis_title="Lợi suất Logarithmic",
+        height=400,
+        margin=dict(l=40, r=20, t=40, b=40), # Điều chỉnh lề
+        xaxis=dict(showgrid=True, gridwidth=1, gridcolor='LightGrey'),
+        yaxis=dict(showgrid=True, gridwidth=1, gridcolor='LightGrey')
+    )
+    st.plotly_chart(fig1, use_container_width=True)
 
-# --- 2. Thêm Biểu đồ Lợi suất Logarithmic (trái) ---
-fig.add_trace(
-    go.Scatter(x=df['date'], y=df['log_return'], mode='lines', name='Lợi suất Log'),
-    row=1, col=1 # Đặt vào hàng 1, cột 1
-)
-# --- 3. Thêm Biểu đồ Phân phối (Histogram + KDE) (phải) ---
+# --- Biểu đồ 2: Phân phối lợi suất Logarithmic (Column 2) ---
+with col2:
+    st.subheader("Phân phối lợi suất Logarithmic")
+    fig2 = go.Figure()
 
-# Histogram Trace cho biểu đồ phân phối
-hist_trace = go.Histogram(
-    x=df['log_return'],
-    nbinsx=50,
-    name='Lợi suất Log',
-    marker_color='lightblue',
-    opacity=0.8,
-    histnorm='probability density', # Chuẩn hóa histogram về mật độ để khớp với KDE
-    showlegend=False # Không hiển thị chú giải cho histogram trong subplot này
-)
-fig.add_trace(hist_trace, row=1, col=2) # Đặt vào hàng 1, cột 2
+    # Histogram Trace
+    hist_trace = go.Histogram(
+        x=df['log_return'],
+        nbinsx=50,
+        name='Lợi suất Log',
+        marker_color='lightblue',
+        opacity=0.8,
+        histnorm='probability density',
+        showlegend=False
+    )
+    fig2.add_trace(hist_trace)
 
-# Tính toán và thêm KDE Trace
-x_kde = np.linspace(df['log_return'].min(), df['log_return'].max(), 500)
-kde = gaussian_kde(df['log_return'])
-kde_y = kde(x_kde)
+    # Tính toán và thêm KDE Trace
+    x_kde = np.linspace(df['log_return'].min(), df['log_return'].max(), 500)
+    kde = gaussian_kde(df['log_return'])
+    kde_y = kde(x_kde)
 
-kde_trace = go.Scatter(
-    x=x_kde,
-    y=kde_y,
-    mode='lines',
-    name='KDE',
-    line=dict(color='red', dash='dash', width=2),
-    showlegend=False # Không hiển thị chú giải cho KDE trong subplot này
-)
-fig.add_trace(kde_trace, row=1, col=2) # Đặt vào hàng 1, cột 2
+    kde_trace = go.Scatter(
+        x=x_kde,
+        y=kde_y,
+        mode='lines',
+        name='KDE',
+        line=dict(color='red', dash='dash', width=2),
+        showlegend=False
+    )
+    fig2.add_trace(kde_trace)
 
-# --- 4. Cập nhật Layout của Biểu đồ tổng thể ---
-fig.update_layout(
-    title_text='Phân tích Lợi suất Logarithmic',
-    height=500, # Chiều cao tổng thể của figure
-    # Cập nhật nhãn trục cho subplot đầu tiên (Lợi suất Logarithmic)
-    xaxis=dict(title_text='', showgrid=True, gridwidth=1, gridcolor='LightGrey'),
-    yaxis=dict(title_text='Lợi suất Logarithmic', showgrid=True, gridwidth=1, gridcolor='LightGrey'),
-    # Cập nhật nhãn trục cho subplot thứ hai (Phân phối)
-    xaxis2=dict(title_text='', showgrid=True, gridwidth=1, gridcolor='LightGrey'), # xaxis2 cho subplot thứ 2
-    yaxis2=dict(title_text='', showgrid=True, gridwidth=1, gridcolor='LightGrey') # yaxis2 cho subplot thứ 2
-)
-
-# --- 5. Hiển thị biểu đồ trên Streamlit ---
-st.plotly_chart(fig, use_container_width=True)
-
+    fig2.update_layout(
+        xaxis_title="",
+        yaxis_title="",
+        height=400,
+        margin=dict(l=40, r=20, t=40, b=40), # Điều chỉnh lề
+        xaxis=dict(showgrid=True, gridwidth=1, gridcolor='LightGrey'),
+        yaxis=dict(showgrid=True, gridwidth=1, gridcolor='LightGrey')
+    )
+    st.plotly_chart(fig2, use_container_width=True)
 # Xây dựng mô hình dự báo tỷ giá hối đoái bằng Garch
 st.markdown("## 3. Dự báo tỷ giá hối đoái USD/VND")
 
