@@ -33,7 +33,9 @@ st.sidebar.markdown("### 1. Data")
 @st.cache_data
 def get_data():
     return ld.loadData()
-df = get_data()
+# Hiển thị loading khi tải dữ liệu
+with st.spinner("Đang tải dữ liệu..."):
+    df = get_data()
 
 with st.sidebar.expander("Dataset"):
     st.write("Tải lên tập dữ liệu của bạn hoặc sử dụng dữ liệu mẫu.")
