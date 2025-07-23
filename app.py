@@ -11,6 +11,8 @@ from scipy.stats import gaussian_kde
 import matplotlib.pyplot as plt
 from plotly.subplots import make_subplots
 from arch import arch_model
+from datetime import datetime, timedelta
+import matplotlib.dates as mdates
 
 warnings.filterwarnings("ignore")
 
@@ -168,6 +170,20 @@ with col4:
         p = st.number_input("Nhập giá trị p (0-3)", min_value=0, max_value=3, value=1)
         q = st.number_input("Nhập giá trị q (0-3)", min_value=0, max_value=3, value=1)
 
+if model_type == "ARCH":
+    vol = 'Arch'
+elif model_type == "GARCH":
+    vol = 'Garch'
+elif model_type == "EGARCH":
+    vol = 'EGarch'
+elif model_type == "TARCH":
+    vol = 'Tarch'
+if distribution == "Normal":
+    dist = 'normal'
+elif distribution == "Student's t":
+    dist = 't'
+elif distribution == "Skewed Student's t":
+    dist = 'skewt'
 
 if model_selection == "Tự động tìm mô hình tốt nhất":
     # Tự động tìm mô hình tốt nhất
@@ -177,24 +193,11 @@ if model_selection == "Tự động tìm mô hình tốt nhất":
             st.error("Không tìm thấy mô hình GARCH phù hợp.")
         else:
             st.success(f"Đã tìm thấy mô hình tốt nhất với tham số (p,q) = {best_params}")
+            p, q = best_params
    
 else:
     # Tạo mô hình với các tham số tùy chỉnh
     with st.spinner("Đang xây dựng mô hình với tham số tùy chỉnh..."):
-        if model_type == "ARCH":
-            vol = 'Arch'
-        elif model_type == "GARCH":
-            vol = 'Garch'
-        elif model_type == "EGARCH":
-            vol = 'EGarch'
-        elif model_type == "TARCH":
-            vol = 'Tarch'
-        if distribution == "Normal":
-            dist = 'normal'
-        elif distribution == "Student's t":
-            dist = 't'
-        elif distribution == "Skewed Student's t":
-            dist = 'skewt'
         try:
             best_model = arch_model(df['log_return'], vol=vol, p=p, q=q, dist=dist)
             best_model = best_model.fit(disp='off')
@@ -275,12 +278,84 @@ if best_model is not None:
             yaxis=dict(showgrid=True, gridwidth=1, gridcolor='LightGrey')
         )
         st.plotly_chart(fig_residuals_dist, use_container_width=True)
+    # --------- Dự báo biến động và giá trị tỷ giá hối đoái USD/VND đối với chuỗi dữ liệu quá khứ----------------
+    # 1. Xác định khoảng thời gian dự báo
+    end_date = df["date"].iloc[-1]   # Thời điểm hiện tại
+    print(f"Ngày cuối cùng trong dữ liệu: {end_date}")
+    start_date = end_date - timedelta(days=5*365) # Lùi về trước 5 năm
+    print(f"Ngày bắt đầu dự báo: {start_date}")
+    print("khoảng dự baos: ", forecast_period)
+    df['date'] = pd.to_datetime(df['date'])
+    historical_data_for_prediction = df[(df['date'] >= start_date) & (df['date'] < end_date)]
+    if historical_data_for_prediction.empty:
+        print("Không có dữ liệu lịch sử trong khoảng thời gian đã chọn để dự báo.")
+    else:
+        check_model = arch_model(historical_data_for_prediction['log_return'], vol=vol, p=p, q=q, dist=dist)
+        check_model = check_model.fit(disp='off')
+        # Kiểm tra xem mô hình có phù hợp với dữ liệu lịch sử không
+        if check_model is None:
+            st.error("Không thể xây dựng mô hình với dữ liệu lịch sử đã chọn.")
+        else:
+            conditional_volatility = check_model.conditional_volatility
+            # lấy cột 'long_return' từ df trong khoảng thời gian đã chọn
+            long_return_for_garch = historical_data_for_prediction['log_return']
+            historical_predictions = pd.DataFrame({
+                'date': historical_data_for_prediction['date'],
+                'long_return': long_return_for_garch,
+                'conditional_volatility': conditional_volatility
+            })
+
+            # --- Vẽ biểu đồ trên Streamlit ---
+            st.markdown("## 4. Kiểm tra dự báo của mô hình với dữ liệu lịch sử")
+
+            # Biểu đồ 1: So sánh 'long_return' thực tế và độ biến động có điều kiện (conditional volatility)
+            fig1, ax1 = plt.subplots(figsize=(14, 7))
+            ax1.plot(historical_predictions['date'], historical_predictions['long_return'], label='Lợi nhuận thực tế (Long Return)', color='blue', alpha=0.7)
+            ax1.plot(historical_predictions['date'], historical_predictions['conditional_volatility'], label='Độ biến động có điều kiện (GARCH)', color='red', linestyle='--')
+            ax1.plot(historical_predictions['date'], -historical_predictions['conditional_volatility'], color='red', linestyle='--', alpha=0.6)
+            ax1.set_title('Lợi nhuận thực tế và Độ biến động có điều kiện GARCH')
+            ax1.set_xlabel('')
+            ax1.set_ylabel('Giá trị')
+            ax1.legend()
+            ax1.grid(True)
+            st.pyplot(fig1) # Hiển thị biểu đồ trên Streamlit 
+
+            usdv_actual_slice = historical_data_for_prediction['USDVND']
+            # Lấy tỷ giá USDVN cuối cùng trước start_date để làm điểm khởi đầu
+            initial_usdv = usdv_actual_slice.iloc[0] if not usdv_actual_slice.empty else 1.0
+            # Tạo một Series cho tỷ giá được xây dựng lại
+            predicted_usdv = pd.Series(index=historical_predictions.index, dtype=float)
+            # Giá trị đầu tiên
+            if len(historical_predictions) > 0:
+                predicted_usdv.iloc[0] = initial_usdv * (1 + long_return_for_garch.iloc[0])
+
+            # Tính toán các giá trị tiếp theo
+            for i in range(1, len(historical_predictions)):
+                predicted_usdv.iloc[i] = predicted_usdv.iloc[i-1] * (1 + long_return_for_garch.iloc[i])
+            historical_predictions['predicted_usdv'] = predicted_usdv
+            # tạo thêm cột date cho 
+ 
+            # Biểu đồ 2: Tỷ giá USD/VND thực tế và Tỷ giá được xây dựng lại từ lợi nhuận thực tế
+            fig2, ax2 = plt.subplots(figsize=(14, 7))
+            ax2.plot(historical_predictions['date'], usdv_actual_slice, label='Tỷ giá USD/VND thực tế', color='green')
+            ax2.plot(historical_predictions['date'], historical_predictions['predicted_usdv'], label='Tỷ giá USD/VND xây dựng từ Lợi nhuận thực tế', color='purple', linestyle='-.')
+            ax2.set_title('Tỷ giá USD/VND thực tế và Tỷ giá dự báo từ mô hình trong khoảng thời gian 5 năm gần nhất')
+            ax2.set_xlabel('')
+            ax2.set_ylabel('Tỷ giá USD/VND')
+            ax2.legend()
+            ax2.grid(True)
+
+            st.pyplot(fig2) # Hiển thị biểu đồ trên Streamlit
+
+    # Dự báo với mô hình tốt nhất
+    forecast = best_model.forecast(horizon=forecast_period)
+    #--------- Dự báo biến động và giá trị tỷ giá hối đoái USD/VND trong tương lai----------------
     if model_type != "EGARCH":
         # Dự báo với mô hình tốt nhất
         forecast = best_model.forecast(horizon=forecast_period)
         conditional_variance_forecast = forecast.variance.iloc[-1]
         volatility_forecast = np.sqrt(conditional_variance_forecast)
-        st.subheader("Dự báo biến động tỷ giá trong tương lai")
+        st.markdown("## 5. Dự báo biến động tỷ giá trong tương lai")
         # --- 2. Dự báo giá trị (Lợi suất và Tỷ giá) ---
         # Dự báo lợi suất (mean forecast)
         mean_forecast = forecast.mean.iloc[-1]
@@ -308,7 +383,7 @@ if best_model is not None:
         col7, col8 = st.columns(2)
 
         with col7:
-            st.write(f"Giá tỷ giá USD/VND dự báo trong {forecast_period} ngày tới:")
+            st.write(f"Dao động tỷ giá sẽ được dự báo từ mô hình GARCH với phân phối {distribution} và loại mô hình {model_type}. Từ đó, giá trị tỷ giá USD/VND dự báo trong {forecast_period} ngày tới sẽ được tính toán ngược trở lại từ giá trị cuối cùng trong dữ liệu gốc và dao động tỷ giá dự báo.")
             st.dataframe(forecasted_prices)
         with col8:
             st.write("")
