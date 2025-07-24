@@ -39,15 +39,15 @@ def get_data():
 with st.spinner("Đang tải dữ liệu..."):
     df = get_data()
 
-with st.sidebar.expander("Dataset"):
-    st.write("Tải lên tập dữ liệu hoặc sử dụng dữ liệu mẫu (Hiên tại chỉ hỗ trợ phân tích dữ liệu theo ngày). Chú ý: Dữ liệu phải có cột 'date' và 'USDVND'.")
-    uploaded_file = st.file_uploader("Chọn file CSV", type="csv")
-    if uploaded_file is not None:
-        try:
-            df = pd.read_csv(uploaded_file)
-            st.success("Đã tải dữ liệu thành công!")
-        except Exception as e:
-            st.error(f"Lỗi khi tải file: {e}")
+#with st.sidebar.expander("Dataset"):
+#    st.write("Tải lên tập dữ liệu hoặc sử dụng dữ liệu mẫu (Hiên tại chỉ hỗ trợ phân tích dữ liệu theo ngày). Chú ý: Dữ liệu phải có cột 'date' và 'USDVND'.")
+#    uploaded_file = st.file_uploader("Chọn file CSV", type="csv")
+#    if uploaded_file is not None:
+#        try:
+#            df = pd.read_csv(uploaded_file)
+#            st.success("Đã tải dữ liệu thành công!")
+#        except Exception as e:
+#            st.error(f"Lỗi khi tải file: {e}")
 
 # Các mục khác trong sidebar có thể thêm vào:
 st.sidebar.markdown("### 2. Modelling")
@@ -67,7 +67,9 @@ st.plotly_chart(fig, use_container_width=True)
 
 # Hiển thị mô tả thống kê của dữ liệu, căn chỉnh bảng và tiêu đề cho đẹp
 st.markdown("### Mô tả thống kê dữ liệu")
-st.dataframe(df.describe().transpose(), use_container_width=True)
+col11, col22 = st.columns(2)
+with col11:
+    st.dataframe(df.describe())
 
 # --- 2. Tính toán lợi suất Logarithmic ---
 st.markdown("## 2. Phân tích lợi suất")
@@ -351,6 +353,7 @@ if best_model is not None:
     forecast = best_model.forecast(horizon=forecast_period)
     #--------- Dự báo biến động và giá trị tỷ giá hối đoái USD/VND trong tương lai----------------
     if model_type != "EGARCH":
+       #------------------------------------------------------------------------------------------------
         # Dự báo với mô hình tốt nhất
         forecast = best_model.forecast(horizon=forecast_period)
         conditional_variance_forecast = forecast.variance.iloc[-1]
@@ -416,3 +419,5 @@ if best_model is not None:
             yaxis=dict(showgrid=True, gridwidth=1, gridcolor='LightGrey')
         )
         st.plotly_chart(fig_forecast, use_container_width=True)
+
+        
